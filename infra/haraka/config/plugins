@@ -1,0 +1,8 @@
+# Haraka plugins list
+# Core plugins
+tls
+data.headers
+max_unrecognized_commands
+
+# HHSP catch-all inbound handler
+hhsp_catchall
