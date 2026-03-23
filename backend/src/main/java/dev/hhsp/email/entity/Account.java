@@ -38,6 +38,9 @@ public class Account {
     @Column(name = "stripe_id", length = 255)
     private String stripeId;
 
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
+
     @Column(name = "created_at", updatable = false)
     private Instant createdAt = Instant.now();
 }
