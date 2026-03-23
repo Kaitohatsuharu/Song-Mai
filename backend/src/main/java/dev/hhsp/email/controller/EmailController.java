@@ -53,19 +53,18 @@ public class EmailController {
                 .filter(m -> m.getAccount().getId().equals(account.getId()))
                 .map(m -> {
                     List<EmailEvent> events = emailEventRepository.findByMessageIdOrderByOccurredAtAsc(m.getId());
-                    Map<String, Object> body = Map.of(
-                            "id", "msg_" + m.getId(),
-                            "short_id", m.getShortId(),
-                            "from", m.getFromAddress(),
-                            "to", m.getToAddress(),
-                            "subject", m.getSubject() != null ? m.getSubject() : "",
-                            "status", m.getStatus(),
-                            "created_at", m.getCreatedAt(),
-                            "sent_at", m.getSentAt() != null ? m.getSentAt() : "",
-                            "opened_at", m.getOpenedAt() != null ? m.getOpenedAt() : "",
-                            "clicked_at", m.getClickedAt() != null ? m.getClickedAt() : "",
-                            "events", events
-                    );
+                    Map<String, Object> body = new java.util.LinkedHashMap<>();
+                    body.put("id", "msg_" + m.getId());
+                    body.put("short_id", m.getShortId());
+                    body.put("from", m.getFromAddress());
+                    body.put("to", m.getToAddress());
+                    body.put("subject", m.getSubject() != null ? m.getSubject() : "");
+                    body.put("status", m.getStatus());
+                    body.put("created_at", m.getCreatedAt());
+                    body.put("sent_at", m.getSentAt() != null ? m.getSentAt() : "");
+                    body.put("opened_at", m.getOpenedAt() != null ? m.getOpenedAt() : "");
+                    body.put("clicked_at", m.getClickedAt() != null ? m.getClickedAt() : "");
+                    body.put("events", events);
                     return ResponseEntity.ok(body);
                 })
                 .orElse(ResponseEntity.notFound().build());
