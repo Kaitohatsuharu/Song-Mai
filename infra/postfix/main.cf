@@ -1,0 +1,63 @@
+# Postfix main.cf — HHSP Email VPS (Hetzner)
+# Outbound MTA for mail.hhsp.dev
+
+# --- Identity ---
+myhostname = vps.hhsp.dev
+myorigin   = $myhostname
+mydomain   = hhsp.dev
+
+# --- Network ---
+inet_interfaces      = all
+inet_protocols       = ipv4
+mynetworks           = 127.0.0.0/8
+mynetworks_style     = host
+relay_domains        =
+mydestination        =
+
+# --- TLS (outbound) ---
+smtp_use_tls             = yes
+smtp_tls_security_level  = may
+smtp_tls_loglevel        = 1
+smtp_tls_CAfile          = /etc/ssl/certs/ca-certificates.crt
+
+# --- TLS (inbound) ---
+smtpd_use_tls            = yes
+smtpd_tls_security_level = may
+smtpd_tls_cert_file      = /etc/letsencrypt/live/vps.hhsp.dev/fullchain.pem
+smtpd_tls_key_file       = /etc/letsencrypt/live/vps.hhsp.dev/privkey.pem
+smtpd_tls_loglevel       = 1
+
+# --- DKIM (via OpenDKIM milter) ---
+milter_default_action  = accept
+milter_protocol        = 6
+smtpd_milters          = inet:localhost:12301
+non_smtpd_milters      = inet:localhost:12301
+
+# --- Queue and delivery ---
+queue_directory        = /var/spool/postfix
+maximal_queue_lifetime = 1d
+bounce_queue_lifetime  = 1d
+default_process_limit  = 100
+smtpd_client_connection_count_limit = 50
+
+# --- Relay (only from localhost — Mac Mini pushes via SMTP AUTH) ---
+smtpd_relay_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_unauth_destination
+
+# --- SASL (Mac Mini → VPS relay) ---
+smtpd_sasl_auth_enable         = yes
+smtpd_sasl_type                = dovecot
+smtpd_sasl_path                = private/auth
+smtpd_sasl_security_options    = noanonymous
+broken_sasl_auth_clients       = yes
+
+# --- Rate limiting ---
+smtpd_client_message_rate_limit = 100
+anvil_rate_time_unit             = 60s
+
+# --- Misc ---
+disable_vrfy_command  = yes
+smtpd_helo_required   = yes
+message_size_limit    = 52428800  # 50 MB

@@ -1,0 +1,11 @@
+package dev.hhsp.email.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
+@Data
+public class VerifyEmailRequest {
+
+    @NotBlank
+    private String email;
+}

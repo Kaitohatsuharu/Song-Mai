@@ -1,0 +1,101 @@
+version: "3.9"
+
+# Full local development stack for HHSP Email SaaS
+# Usage: docker compose up --build
+
+services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: hhsp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       hhsp_email
+      POSTGRES_USER:     hhsp
+      POSTGRES_PASSWORD: changeme
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hhsp -d hhsp_email"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: hhsp-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Application ─────────────────────────────────────────────────────────────
+
+  backend:
+    build: ./backend
+    container_name: hhsp-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL:                  jdbc:postgresql://postgres:5432/hhsp_email
+      DB_USERNAME:             hhsp
+      DB_PASSWORD:             changeme
+      REDIS_URL:               redis://redis:6379
+      JWT_SECRET:              dev-jwt-secret-key-at-least-256-bits-long-for-hs256
+      INTERNAL_SECRET:         dev-internal-secret
+      TRACKING_BASE_URL:       http://localhost:8080
+      NAS_MOUNT_PATH:          /mnt/nas/emails
+      STRIPE_SECRET_KEY:       sk_test_placeholder
+      STRIPE_WEBHOOK_SECRET:   whsec_placeholder
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    container_name: hhsp-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXTAUTH_SECRET: dev-nextauth-secret-key-123
+      NEXTAUTH_URL:    http://localhost:3000
+    depends_on:
+      - backend
+
+  # ── Dev tools (opt-in) ──────────────────────────────────────────────────────
+
+  adminer:
+    image: adminer:latest
+    container_name: hhsp-adminer
+    restart: unless-stopped
+    ports:
+      - "8888:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - dev-tools
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
