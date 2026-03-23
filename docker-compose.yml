@@ -1,9 +1,11 @@
 version: "3.9"
 
-# Local development environment for HHSP Email SaaS
-# Provides PostgreSQL and Redis only — app services run natively (Maven/npm)
+# Full local development stack for HHSP Email SaaS
+# Usage: docker compose up --build
 
 services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
 
   postgres:
     image: postgres:16-alpine
@@ -38,7 +40,48 @@ services:
       timeout: 5s
       retries: 5
 
-  # Optional: Adminer for DB inspection during development
+  # ── Application ─────────────────────────────────────────────────────────────
+
+  backend:
+    build: ./backend
+    container_name: hhsp-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL:                  jdbc:postgresql://postgres:5432/hhsp_email
+      DB_USERNAME:             hhsp
+      DB_PASSWORD:             changeme
+      REDIS_URL:               redis://redis:6379
+      JWT_SECRET:              dev-jwt-secret-key-at-least-256-bits-long-for-hs256
+      INTERNAL_SECRET:         dev-internal-secret
+      TRACKING_BASE_URL:       http://localhost:8080
+      NAS_MOUNT_PATH:          /mnt/nas/emails
+      STRIPE_SECRET_KEY:       sk_test_placeholder
+      STRIPE_WEBHOOK_SECRET:   whsec_placeholder
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    container_name: hhsp-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXTAUTH_SECRET: dev-nextauth-secret-key-123
+      NEXTAUTH_URL:    http://localhost:3000
+    depends_on:
+      - backend
+
+  # ── Dev tools (opt-in) ──────────────────────────────────────────────────────
+
   adminer:
     image: adminer:latest
     container_name: hhsp-adminer
